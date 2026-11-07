@@ -1,0 +1,20 @@
+# AGENTS.md
+
+onchain: wallet-facing dApp for onchain.tatas.anxentlab.my.id. Read README.md first.
+
+Rules for agents:
+- Never add code that requests private keys or seed phrases, or that triggers signatures/transactions without explicit user action.
+- Do not add third-party scripts; keep the CSP in next.config.ts intact.
+- Visitor addresses and balances must not be sent to or stored on the server.
+- New tokens go in src/lib/tokens.ts; verify the address on the chain explorer.
+- Keep design tokens in src/app/globals.css in sync with the main site repo (tatashandharu15/portofolio).
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
