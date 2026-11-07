@@ -6,6 +6,8 @@ Phase 1: connect MetaMask and read balances (native coin + major tokens) across 
 
 Phase 2: an on-chain guestbook on Base Sepolia. `contracts/` holds the Foundry project (Guestbook.sol, unit/fuzz/invariant tests, deploy script); the dApp reads the latest entries and lets a connected wallet sign (switching to Base Sepolia if needed).
 
+Phase 2b: token approval scanner. `/api/approvals` finds Approval / ApprovalForAll events for an owner through Etherscan API V2 (server-side key), the browser re-checks every candidate's current allowance on-chain, flags unlimited approvals and spenders that are not contracts, and lets the connected owner revoke (approve 0 / setApprovalForAll false). The address passes through the route without being logged or stored.
+
 Stack: Next.js 16 App Router, wagmi 3 + viem 2, TanStack Query. Prices from DefiLlama, USD/IDR from Frankfurter (ECB), both cached for 60 s in `/api/prices`.
 
 ## Develop
@@ -23,6 +25,7 @@ Open http://localhost:3000 in a browser with MetaMask installed.
 - `src/lib/tokens.ts`: chain metadata and the curated token list (decimals read on-chain)
 - `src/lib/portfolio.ts`: one multicall per chain, run in the visitor's browser
 - `src/app/api/prices/route.ts`: price feed for a fixed key list only (no visitor input)
+- `src/app/api/approvals/route.ts`, `src/lib/approvals.ts`, `src/components/Approvals.tsx`: approval scanner and revoke
 - `src/lib/guestbook.ts`, `src/lib/guestbookAbi.ts`: guestbook address, chain and ABI
 - `src/components/WalletBar.tsx`, `src/components/Dashboard.tsx`, `src/components/Guestbook.tsx`: UI
 - `contracts/`: Foundry project
@@ -73,6 +76,10 @@ Guestbook:
 
 - `NEXT_PUBLIC_GUESTBOOK_ADDRESS`: deployed Guestbook address on Base Sepolia
 
+Approval scanner (server-only, never prefix with NEXT_PUBLIC):
+
+- `ETHERSCAN_API_KEY`: Etherscan API V2 key. Without it the approvals section says the scanner is not configured. Chains not covered by your Etherscan plan are listed as "not scanned".
+
 These are exposed to the browser, so use keys restricted to the onchain domain in the provider dashboard.
 
 ## Deploy (Vercel Hobby)
@@ -85,6 +92,7 @@ These are exposed to the browser, so use keys restricted to the onchain domain i
 ## Roadmap
 
 Phase 2 (done): Guestbook.sol on Base Sepolia.
-Phase 2b: token approvals with revoke and full token discovery (needs an indexer API key, e.g. Alchemy).
+Phase 2b (done): token approvals with revoke.
+Next: full token and NFT discovery for the dashboard.
 Phase 3: Sign-In with Ethereum, EIP-712 endorsements, NFTs, visitor badge, Ponder indexing, Base mainnet.
 PRD: `Web3 & Blockchain/03-projects/web3-portfolio/PRD.md`.

@@ -5,7 +5,8 @@ onchain: wallet-facing dApp for onchain.tatas.anxentlab.my.id. Read README.md fi
 Rules for agents:
 - Never add code that requests private keys or seed phrases, or that triggers signatures/transactions without explicit user action.
 - Do not add third-party scripts; keep the CSP in next.config.ts intact.
-- Visitor addresses and balances must not be sent to or stored on the server.
+- Visitor addresses and balances must not be stored, logged or cached on the server. The only route that receives an address is /api/approvals, which forwards it to Etherscan and returns; keep it that way.
+- ETHERSCAN_API_KEY is server-only; never expose it with a NEXT_PUBLIC_ prefix.
 - New tokens go in src/lib/tokens.ts; verify the address on the chain explorer.
 - Contract changes in contracts/ need matching Foundry tests (unit + fuzz, and an invariant when state rules change); regenerate src/lib/guestbookAbi.ts after ABI changes.
 - Never put private keys in .env or scripts; deploy with `--account` keystores.

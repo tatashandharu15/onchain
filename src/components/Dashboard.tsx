@@ -7,6 +7,7 @@ import { useConnection } from "wagmi";
 import type { PricesResponse } from "@/app/api/prices/route";
 import { fmtAmount, fmtIdr, fmtUsd, shortAddress } from "@/lib/format";
 import { loadPortfolio } from "@/lib/portfolio";
+import { Approvals } from "./Approvals";
 import { CHAINS, chainMeta } from "@/lib/tokens";
 
 async function getPrices(): Promise<PricesResponse> {
@@ -39,6 +40,7 @@ export function Dashboard() {
   }));
 
   return (
+    <>
     <section className="dash px" aria-labelledby="dash-title">
       <div className="dash-head">
         <p className="t-mono c-muted" id="dash-title">
@@ -171,5 +173,7 @@ export function Dashboard() {
         </>
       )}
     </section>
+    {owner && <Approvals owner={owner} canRevoke={!watched && !!connected && owner === connected} />}
+    </>
   );
 }
