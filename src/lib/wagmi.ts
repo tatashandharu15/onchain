@@ -1,5 +1,5 @@
 import { createConfig, http, injected } from "wagmi";
-import { arbitrum, base, bsc, mainnet, polygon } from "wagmi/chains";
+import { arbitrum, base, baseSepolia, bsc, mainnet, polygon } from "wagmi/chains";
 
 // Optional: set NEXT_PUBLIC_RPC_<CHAIN> in Vercel to use a private RPC (Alchemy, Infura, dRPC).
 // Without them the chains' public RPCs are used, which are rate limited but need no key.
@@ -9,10 +9,11 @@ const rpc = {
   [arbitrum.id]: process.env.NEXT_PUBLIC_RPC_ARBITRUM,
   [polygon.id]: process.env.NEXT_PUBLIC_RPC_POLYGON,
   [bsc.id]: process.env.NEXT_PUBLIC_RPC_BSC,
+  [baseSepolia.id]: process.env.NEXT_PUBLIC_RPC_BASE_SEPOLIA,
 };
 
 export const config = createConfig({
-  chains: [mainnet, base, arbitrum, polygon, bsc],
+  chains: [mainnet, base, arbitrum, polygon, bsc, baseSepolia],
   // EIP-6963 discovery is on by default, so MetaMask shows up as its own connector (id "io.metamask").
   connectors: [injected()],
   transports: {
@@ -21,6 +22,7 @@ export const config = createConfig({
     [arbitrum.id]: http(rpc[arbitrum.id], { batch: true }),
     [polygon.id]: http(rpc[polygon.id], { batch: true }),
     [bsc.id]: http(rpc[bsc.id], { batch: true }),
+    [baseSepolia.id]: http(rpc[baseSepolia.id], { batch: true }),
   },
   ssr: true,
 });

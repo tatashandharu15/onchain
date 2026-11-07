@@ -7,6 +7,8 @@ Rules for agents:
 - Do not add third-party scripts; keep the CSP in next.config.ts intact.
 - Visitor addresses and balances must not be sent to or stored on the server.
 - New tokens go in src/lib/tokens.ts; verify the address on the chain explorer.
+- Contract changes in contracts/ need matching Foundry tests (unit + fuzz, and an invariant when state rules change); regenerate src/lib/guestbookAbi.ts after ABI changes.
+- Never put private keys in .env or scripts; deploy with `--account` keystores.
 - Keep design tokens in src/app/globals.css in sync with the main site repo (tatashandharu15/portofolio).
 
 <!-- BEGIN:nextjs-agent-rules -->

@@ -1,4 +1,5 @@
 import { Dashboard } from "@/components/Dashboard";
+import { Guestbook } from "@/components/Guestbook";
 import { WalletBar } from "@/components/WalletBar";
 
 const MAIN_SITE = "https://tatas.anxentlab.my.id";
@@ -14,20 +15,21 @@ export default function Home() {
       </nav>
 
       <header className="hero px">
-        <p className="t-mono c-muted">Onchain · Phase 1</p>
+        <p className="t-mono c-muted">Onchain · Phase 2</p>
         <h1 className="t-h1">Onchain</h1>
         <p className="t-role hero-sub">
-          The Web3 side of my portfolio. Connect a wallet to read your balances across five EVM chains. Guestbook,
-          Sign-In with Ethereum and endorsements are next.
+          The Web3 side of my portfolio. Connect a wallet to read your balances across five EVM chains, then leave a
+          message in an on-chain guestbook.
         </p>
       </header>
 
       <main className="grow">
         <Dashboard />
+        <Guestbook />
       </main>
 
       <footer className="foot px t-mono c-muted">
-        <span>Read only. No keys, no custody, no tracking.</span>
+        <span>No keys, no custody, no tracking. You sign every transaction yourself.</span>
         <a className="l-muted" href={MAIN_SITE}>
           Tatas Handharu
         </a>

@@ -127,3 +127,23 @@ a { color: inherit; text-decoration: none; }
   display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
   padding-top: 20px; padding-bottom: 24px; border-top: 1px solid var(--grid);
 }
+
+/* Guestbook */
+.gb { display: flex; flex-direction: column; gap: 32px; padding-bottom: 96px; }
+.gb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+.gb-intro { display: flex; flex-direction: column; gap: 16px; }
+.gb-intro .t-body { max-width: 520px; }
+.gb-form { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+.gb-input {
+  width: 100%; resize: vertical; padding: 12px; border: 1px solid var(--grid); background: transparent;
+  color: var(--ink); font-family: inherit;
+}
+.gb-input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.gb-input:disabled { opacity: 0.6; }
+.gb-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.gb-over { color: var(--warn); }
+.gb-tx { text-transform: none; }
+.gb-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--grid); }
+.gb-item { padding: 16px 0; border-bottom: 1px solid var(--grid); display: flex; flex-direction: column; gap: 6px; }
+.gb-msg { overflow-wrap: anywhere; white-space: pre-wrap; }
+@media (max-width: 809.98px) { .gb-grid { grid-template-columns: 1fr; gap: 32px; } }
