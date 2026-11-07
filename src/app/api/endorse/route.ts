@@ -43,8 +43,14 @@ const json = (body: RelayResponse, status = 200) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
 export async function POST(request: NextRequest) {
-  const key = process.env.RELAYER_PRIVATE_KEY;
-  if (!key || !ENDORSEMENTS_ADDRESS || !/^0x[0-9a-fA-F]{64}$/.test(key)) {
+  // MetaMask exports keys without the 0x prefix; accept both and ignore stray whitespace.
+  const rawKey = (process.env.RELAYER_PRIVATE_KEY ?? "").trim();
+  const key = rawKey.startsWith("0x") ? rawKey : `0x${rawKey}`;
+  if (!ENDORSEMENTS_ADDRESS || !/^0x[0-9a-fA-F]{64}$/.test(key)) {
+    // Shows up in Vercel function logs; never includes the key itself.
+    console.error(
+      `[endorse] relayer not configured: address ${ENDORSEMENTS_ADDRESS ? "ok" : "missing/invalid"}, key ${!rawKey ? "missing" : /^0x[0-9a-fA-F]{64}$/.test(key) ? "ok" : `malformed (length ${rawKey.length})`}`,
+    );
     return json({ error: "Relayer is not configured.", relay: false }, 503);
   }
 
