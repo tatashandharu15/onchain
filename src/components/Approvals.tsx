@@ -10,6 +10,10 @@ import { shortAddress } from "@/lib/format";
 import { CHAINS, chainMeta } from "@/lib/tokens";
 
 const dateFmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" });
+const listNames = (ids: number[]) => {
+  const names = ids.map((id) => chainMeta(id)?.name ?? `chain ${id}`);
+  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+};
 const keyOf = (a: ActiveApproval) => `${a.chainId}:${a.kind}:${a.token}:${a.spender}`;
 
 function explain(err: unknown) {
@@ -47,7 +51,9 @@ export function Approvals({ owner, canRevoke }: { owner: Address; canRevoke: boo
 
   const items = (scan.data ?? []).flatMap((c) => (c.status === "ok" ? c.items : [])).filter((a) => !revoked.has(keyOf(a)));
   const unavailable = (scan.data ?? []).filter((c): c is Extract<ChainApprovals, { status: "unavailable" }> => c.status === "unavailable");
-  const truncated = (scan.data ?? []).some((c) => c.status === "ok" && c.truncated);
+  const notCovered = unavailable.filter((u) => u.reason === "coverage").map((u) => u.chainId);
+  const failed = unavailable.filter((u) => u.reason !== "coverage").map((u) => u.chainId);
+  const truncatedChains = (scan.data ?? []).filter((c) => c.status === "ok" && c.truncated).map((c) => c.chainId);
   const risky = items.filter((a) => !a.spenderIsContract).length;
   const unlimited = items.filter((a) => a.unlimited).length;
 
@@ -172,12 +178,18 @@ export function Approvals({ owner, canRevoke }: { owner: Address; canRevoke: boo
             </div>
           )}
 
-          {unavailable.length > 0 && (
-            <p className="t-mono notice">
-              Not scanned: {unavailable.map((u) => `${chainMeta(u.chainId)?.name} (${u.reason})`).join("; ")}
+          {notCovered.length > 0 && (
+            <p className="t-mono c-muted ap-foot">Approvals on {listNames(notCovered)} are not covered yet.</p>
+          )}
+          {failed.length > 0 && (
+            <p className="t-mono notice">Could not scan {listNames(failed)} right now. Try Rescan in a moment.</p>
+          )}
+          {truncatedChains.length > 0 && (
+            <p className="t-mono c-muted ap-foot">
+              {listNames(truncatedChains)} {truncatedChains.length > 1 ? "have" : "has"} a long approval history; the scan stopped
+              at 3,000 events per chain, so this list may be incomplete.
             </p>
           )}
-          {truncated && <p className="t-mono notice">Very long approval history; only the latest 3,000 events per chain were scanned.</p>}
           <p className="t-mono c-muted ap-foot">
             Candidates come from Approval and ApprovalForAll events via Etherscan, proxied by this site without storing anything.
             {!canRevoke && " Connect the owning wallet to revoke."}

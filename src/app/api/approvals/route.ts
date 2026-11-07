@@ -62,7 +62,8 @@ async function etherscanLogs(chainId: number, topic0: string, owner: Address, pa
       continue;
     }
     // Plan restrictions ("not supported for this chain on the Free tier", "upgrade", etc.)
-    const reason = /upgrade|not supported|paid|plan/i.test(msg) ? "needs a paid Etherscan plan" : msg || json.message || "Etherscan error";
+    // "coverage" = the data source does not cover this chain; the UI phrases it neutrally.
+    const reason = /upgrade|not supported|paid|plan/i.test(msg) ? "coverage" : msg || json.message || "Etherscan error";
     throw Object.assign(new Error(reason), { unavailable: true });
   }
   throw Object.assign(new Error("Etherscan rate limit, try again shortly."), { unavailable: true });
