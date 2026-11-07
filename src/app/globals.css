@@ -184,3 +184,19 @@ a { color: inherit; text-decoration: none; }
 .op-config { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; text-transform: none; }
 @media (max-width: 1199.98px) { .op-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 809.98px) { .op-grid { grid-template-columns: 1fr; } }
+
+/* Visitor badge */
+.vb-grid { display: grid; grid-template-columns: 1fr 280px; gap: 48px; align-items: start; }
+.vb-art { width: 100%; height: auto; border: 1px solid var(--grid); }
+@media (max-width: 809.98px) { .vb-grid { grid-template-columns: 1fr; } .vb-art { max-width: 280px; } }
+
+/* NFTs + unpriced toggle */
+.dash-unpriced { align-self: flex-start; }
+.nft-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
+.nft-card { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.nft-card img, .nft-empty { width: 100%; aspect-ratio: 1; object-fit: cover; border: 1px solid var(--grid); background: #e9e8e4; display: block; }
+.nft-empty { display: flex; align-items: center; justify-content: center; }
+.nft-name, .nft-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nft-meta { text-transform: none; }
+@media (max-width: 1199.98px) { .nft-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 809.98px) { .nft-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

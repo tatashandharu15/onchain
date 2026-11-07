@@ -6,7 +6,9 @@ import { isAddress, type Address } from "viem";
 import { useConnection } from "wagmi";
 import type { PricesResponse } from "@/app/api/prices/route";
 import { fmtAmount, fmtIdr, fmtUsd, shortAddress } from "@/lib/format";
+import { collectNfts, loadDiscovery, mergeHoldings } from "@/lib/assets";
 import { loadPortfolio } from "@/lib/portfolio";
+import { NftGallery } from "./NftGallery";
 import { Approvals } from "./Approvals";
 import { CHAINS, chainMeta } from "@/lib/tokens";
 
@@ -30,13 +32,31 @@ export function Dashboard() {
     staleTime: 30_000,
   });
 
+  const discovery = useQuery({
+    queryKey: ["assets", owner],
+    queryFn: () => loadDiscovery(owner as Address),
+    enabled: !!owner,
+    staleTime: 5 * 60_000,
+  });
+  const [showUnpriced, setShowUnpriced] = useState(false);
+
   const usdIdr = prices.data?.usdIdr ?? null;
-  const total = portfolio.data?.totalUsd ?? null;
+  const merged = mergeHoldings(portfolio.data, discovery.data);
+  const unpricedCount = merged.filter((h) => h.unpriced && h.address !== "native").length;
+  const rows = merged.filter((h) => showUnpriced || !h.unpriced || h.address === "native");
+  const total = portfolio.data ? merged.reduce((s, h) => s + (h.valueUsd ?? 0), 0) : null;
   const failed = portfolio.data?.chains.filter((c) => !c.ok) ?? [];
+  const discoveryOn = discovery.data?.configured ?? false;
+  const tokenGaps = discoveryOn
+    ? CHAINS.filter((c) => {
+        const d = discovery.data!.byChain[c.id];
+        return !d || d.status !== "ok" || d.tokens === null;
+      })
+    : [];
 
   const byChain = CHAINS.map((c) => ({
     ...c,
-    value: portfolio.data?.holdings.filter((h) => h.chainId === c.id).reduce((s, h) => s + (h.valueUsd ?? 0), 0) ?? 0,
+    value: merged.filter((h) => h.chainId === c.id).reduce((s, h) => s + (h.valueUsd ?? 0), 0),
   }));
 
   return (
@@ -136,7 +156,7 @@ export function Dashboard() {
                 </tr>
               </thead>
               <tbody className="t-body">
-                {portfolio.data?.holdings.map((h) => {
+                {rows.map((h) => {
                   const explorer = chainMeta(h.chainId)?.explorer;
                   const href =
                     h.address === "native" ? `${explorer}/address/${owner}` : `${explorer}/token/${h.address}?a=${owner}`;
@@ -146,6 +166,7 @@ export function Dashboard() {
                         <a className="l-underline" href={href} target="_blank" rel="noopener noreferrer">
                           {h.symbol}
                         </a>
+                        {h.unpriced && h.address !== "native" && <span className="ap-tag t-mono c-muted">No price</span>}
                       </td>
                       <td className="c-muted">{h.chainName}</td>
                       <td className="num">{fmtAmount(h.amount)}</td>
@@ -154,25 +175,49 @@ export function Dashboard() {
                     </tr>
                   );
                 })}
-                {portfolio.data && portfolio.data.holdings.length === 0 && (
+                {portfolio.data && rows.length === 0 && (
                   <tr>
                     <td colSpan={5} className="c-muted">
-                      No balances found for the tracked tokens.
+                      {discoveryOn ? "No token balances found." : "No balances found for the tracked tokens."}
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
+          {unpricedCount > 0 && (
+            <button className="en-alt t-mono l-muted dash-unpriced" type="button" onClick={() => setShowUnpriced((v) => !v)}>
+              {showUnpriced
+                ? "Hide tokens without a price"
+                : `Show ${unpricedCount} token${unpricedCount > 1 ? "s" : ""} without a price (often airdropped spam, never interact with them)`}
+            </button>
+          )}
           <div className="dash-foot t-mono c-muted">
-            <span>Tracking native coins and major tokens. Full token and NFT discovery arrives in phase 2.</span>
-            <button className="btn btn-ghost t-mono" type="button" onClick={() => portfolio.refetch()} disabled={portfolio.isFetching}>
-              {portfolio.isFetching ? "Refreshing…" : "Refresh"}
+            <span>
+              {discovery.isFetching
+                ? "Discovering all tokens and NFTs…"
+                : discoveryOn
+                  ? tokenGaps.length > 0
+                    ? `All ERC-20 tokens via Alchemy; curated list used for ${tokenGaps.map((c) => c.name).join(", ")}.`
+                    : "All ERC-20 tokens via Alchemy, prices from DefiLlama. Unpriced tokens are hidden by default."
+                  : "Tracking native coins and major tokens."}
+            </span>
+            <button
+              className="btn btn-ghost t-mono"
+              type="button"
+              onClick={() => {
+                void portfolio.refetch();
+                void discovery.refetch();
+              }}
+              disabled={portfolio.isFetching || discovery.isFetching}
+            >
+              {portfolio.isFetching || discovery.isFetching ? "Refreshing…" : "Refresh"}
             </button>
           </div>
         </>
       )}
     </section>
+    {owner && discoveryOn && <NftGallery owner={owner} items={collectNfts(discovery.data)} discovery={discovery.data} />}
     {owner && <Approvals owner={owner} canRevoke={!watched && !!connected && owner === connected} />}
     </>
   );

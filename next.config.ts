@@ -9,7 +9,8 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  // https: so NFT thumbnails and token logos from indexer CDNs can load; images cannot run script.
+  "img-src 'self' data: blob: https:",
   "font-src 'self'",
   `connect-src 'self' https:${isDev ? " ws: http://localhost:*" : ""}`,
   "frame-ancestors 'none'",

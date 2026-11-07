@@ -2,6 +2,7 @@ import { Dashboard } from "@/components/Dashboard";
 import { Endorsements } from "@/components/Endorsements";
 import { Guestbook } from "@/components/Guestbook";
 import { OwnerPanel } from "@/components/OwnerPanel";
+import { VisitorBadge } from "@/components/VisitorBadge";
 import { WalletBar } from "@/components/WalletBar";
 
 const MAIN_SITE = "https://tatas.anxentlab.my.id";
@@ -28,6 +29,7 @@ export default function Home() {
       <main className="grow">
         <Dashboard />
         <Guestbook />
+        <VisitorBadge />
         <Endorsements />
         <OwnerPanel />
       </main>

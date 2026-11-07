@@ -12,6 +12,10 @@ Phase 3a: gasless skill endorsements. `contracts/src/Endorsements.sol` accepts e
 
 Phase 3b: Sign-In with Ethereum (EIP-4361). `/api/auth/nonce` issues a single-use nonce in a signed httpOnly cookie; `/api/auth/verify` checks domain, nonce, freshness, chain and the signature (EOA or smart account via ERC-1271/6492, viem `verifySiweMessage`) and sets an HMAC-signed session cookie (8 h, SameSite=Strict). No database. The site owner is whoever owns the Guestbook contract on-chain; a signed-in owner gets an owner panel (relayer balance, server config, counts, served only by the owner-gated `/api/admin/status`) and Hide/Unhide on guestbook entries.
 
+Phase 2c: full token and NFT discovery. `/api/assets` uses Alchemy's Token API (`alchemy_getTokenBalances` + batched `alchemy_getTokenMetadata`) and NFT API v3 (`getNFTsForOwner`, SPAM filter when the plan allows it) with DefiLlama prices. Native balances stay on the browser multicall; if discovery fails on a chain, the dashboard falls back to the curated token list there. Tokens without a price are hidden by default (often airdropped spam). Only https images are rendered.
+
+Visitor badge: `contracts/src/VisitorBadge.sol`, a soulbound ERC-721 (ERC-5192) that anyone who signed the Guestbook can mint once. Transfers and approvals revert; artwork and metadata are fully on-chain SVG/JSON with no user text.
+
 Stack: Next.js 16 App Router, wagmi 3 + viem 2, TanStack Query. Prices from DefiLlama, USD/IDR from Frankfurter (ECB), both cached for 60 s in `/api/prices`.
 
 ## Develop
@@ -34,6 +38,8 @@ Open http://localhost:3000 in a browser with MetaMask installed.
 - `src/components/WalletBar.tsx`, `src/components/Dashboard.tsx`, `src/components/Guestbook.tsx`: UI
 - `src/lib/endorsements.ts`, `src/lib/endorsementsAbi.ts`, `src/components/Endorsements.tsx`, `src/app/api/endorse/route.ts`: endorsements and relayer
 - `src/lib/session.ts`, `src/lib/useSession.ts`, `src/app/api/auth/*`, `src/app/api/admin/status/route.ts`, `src/components/OwnerPanel.tsx`: Sign-In with Ethereum and owner panel
+- `src/app/api/assets/route.ts`, `src/lib/assets.ts`, `src/components/NftGallery.tsx`: token and NFT discovery
+- `src/lib/badge.ts`, `src/lib/badgeAbi.ts`, `src/components/VisitorBadge.tsx`: visitor badge
 - `contracts/`: Foundry project
 - `next.config.ts`: security headers (CSP, frame-ancestors none, HSTS)
 
@@ -60,6 +66,16 @@ forge script script/DeployEndorsements.s.sol --rpc-url base_sepolia --account de
 Seeds five skills. Put the address in Vercel as `NEXT_PUBLIC_ENDORSEMENTS_ADDRESS`.
 
 Deployed: Endorsements on Base Sepolia at `0x121cB00B3E837057e1EefbD951F166F2Ce576E55` (owner `0x1450329C78487f0A28c47a819e77D4De575370f7`, block 55749740, verified on Basescan and Sourcify). Test suite at deploy: 47 passed (incl. 24 Endorsements unit/fuzz and 2 replay-hunting invariants).
+
+### Deploy VisitorBadge
+
+```bash
+GUESTBOOK=0x930b86E72b6F2c64fdc0263cf4f0126888b5Cec7 forge script script/DeployVisitorBadge.s.sol --rpc-url base_sepolia --account deployer --broadcast --verify
+```
+
+Put the address in Vercel as `NEXT_PUBLIC_BADGE_ADDRESS`. The badge section is hidden until it is set.
+
+Deployed: VisitorBadge on Base Sepolia at `0x611D092f2a2A574E88321e9ffF493630b1F6ba37` (Guestbook `0x930b…Cec7`, block 55767448, verified on Basescan and Sourcify).
 
 ### Deploy to Base Sepolia
 
@@ -97,6 +113,14 @@ Endorsements:
 - `NEXT_PUBLIC_ENDORSEMENTS_ADDRESS`: deployed Endorsements address on Base Sepolia
 - `RELAYER_PRIVATE_KEY` (server-only): private key of a dedicated Base Sepolia relayer wallet holding a small amount of test ETH. It only ever calls `endorseBySig` on the configured contract. Without it, visitors can still endorse by paying gas themselves.
 
+Token and NFT discovery (server-only):
+
+- `ALCHEMY_API_KEY`: Alchemy API key. Without it the dashboard uses the curated token list and shows no NFT section.
+
+Visitor badge:
+
+- `NEXT_PUBLIC_BADGE_ADDRESS`: deployed VisitorBadge address (same chain as the Guestbook)
+
 Sign-In with Ethereum (server-only):
 
 - `SESSION_SECRET`: random string of at least 32 characters used to sign session and nonce cookies, e.g. `openssl rand -base64 48`. Without it the Sign in button is hidden. Changing it signs everyone out.
@@ -119,7 +143,7 @@ These are exposed to the browser, so use keys restricted to the onchain domain i
 
 Phase 2 (done): Guestbook.sol on Base Sepolia.
 Phase 2b (done): token approvals with revoke.
-Next: full token and NFT discovery for the dashboard.
+Phase 2c (done): full token and NFT discovery.
 Phase 3a (done): EIP-712 endorsements with relayer.
 Phase 3b (done): Sign-In with Ethereum and owner panel.
 Later: NFTs, visitor badge, Ponder indexing, Base mainnet.
