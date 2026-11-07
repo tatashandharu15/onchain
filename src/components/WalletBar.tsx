@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useConnect, useConnection, useConnectors, useDisconnect, useEnsName } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import { chainMeta } from "@/lib/tokens";
@@ -24,6 +24,20 @@ export function WalletBar() {
   );
   const fallback = hasInjected ? connectors.find((c) => c.id === "injected") : undefined;
   const target = metamask ?? fallback;
+
+  // Main site's "Connect MetaMask" links here with ?connect=1: open the wallet prompt once, then clean the URL.
+  // MetaMask announces itself via EIP-6963 shortly after load, so this waits for the connector to appear.
+  const autoTried = useRef(false);
+  useEffect(() => {
+    if (autoTried.current || !target || status !== "disconnected") return;
+    if (!metamask && typeof (window as { ethereum?: unknown }).ethereum === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("connect") !== "1") return;
+    autoTried.current = true;
+    url.searchParams.delete("connect");
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+    connect.mutate({ connector: target });
+  }, [target, metamask, status, connect]);
 
   if (status === "connected" && address) {
     return (
