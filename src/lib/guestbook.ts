@@ -1,10 +1,10 @@
 import { isAddress, type Address } from "viem";
-import { baseSepolia } from "wagmi/chains";
+import { CONTRACTS_CHAIN, CONTRACTS_EXPLORER } from "./contracts";
 
 export { guestbookAbi } from "./guestbookAbi";
 
-export const GUESTBOOK_CHAIN = baseSepolia;
-export const GUESTBOOK_EXPLORER = "https://sepolia.basescan.org";
+export const GUESTBOOK_CHAIN = CONTRACTS_CHAIN;
+export const GUESTBOOK_EXPLORER = CONTRACTS_EXPLORER;
 export const MAX_MESSAGE_BYTES = 140;
 export const PAGE_SIZE = 20n;
 // Mirrors Guestbook.COOLDOWN (1 hours).

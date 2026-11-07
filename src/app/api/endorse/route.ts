@@ -1,9 +1,10 @@
 import type { NextRequest } from "next/server";
 import { createPublicClient, createWalletClient, formatEther, http, isAddress, isHex, parseEther } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { baseSepolia } from "viem/chains";
 import {
-  ENDORSEMENTS_ADDRESS,
-  ENDORSEMENTS_CHAIN,
+  GASLESS_CHAIN,
+  GASLESS_ENDORSEMENTS_ADDRESS,
   SIGNATURE_TTL_SECONDS,
   endorseDomain,
   endorseTypes,
@@ -22,6 +23,7 @@ import {
  *  - the endorsement does not already exist,
  *  - a dry run (simulate) succeeds.
  * A basic per-IP limit and a minimum relayer balance keep a spammer from draining it.
+ * The relayer only ever runs on Base Sepolia, even when the site's main contracts are on mainnet.
  */
 
 const RPC = process.env.NEXT_PUBLIC_RPC_BASE_SEPOLIA || undefined;
@@ -46,10 +48,13 @@ export async function POST(request: NextRequest) {
   // MetaMask exports keys without the 0x prefix; accept both and ignore stray whitespace.
   const rawKey = (process.env.RELAYER_PRIVATE_KEY ?? "").trim();
   const key = rawKey.startsWith("0x") ? rawKey : `0x${rawKey}`;
-  if (!ENDORSEMENTS_ADDRESS || !/^0x[0-9a-fA-F]{64}$/.test(key)) {
+  // Hard guard: never let the relayer key sign on anything but the testnet.
+  if (GASLESS_CHAIN.id !== baseSepolia.id) return json({ error: "Relayer is testnet-only.", relay: false }, 503);
+  const target = GASLESS_ENDORSEMENTS_ADDRESS;
+  if (!target || !/^0x[0-9a-fA-F]{64}$/.test(key)) {
     // Shows up in Vercel function logs; never includes the key itself.
     console.error(
-      `[endorse] relayer not configured: address ${ENDORSEMENTS_ADDRESS ? "ok" : "missing/invalid"}, key ${!rawKey ? "missing" : /^0x[0-9a-fA-F]{64}$/.test(key) ? "ok" : `malformed (length ${rawKey.length})`}`,
+      `[endorse] relayer not configured: address ${target ? "ok" : "missing/invalid"}, key ${!rawKey ? "missing" : /^0x[0-9a-fA-F]{64}$/.test(key) ? "ok" : `malformed (length ${rawKey.length})`}`,
     );
     return json({ error: "Relayer is not configured.", relay: false }, 503);
   }
@@ -78,8 +83,8 @@ export async function POST(request: NextRequest) {
   if (deadline < now) return json({ error: "Signature expired. Please sign again." }, 400);
   if (deadline > now + BigInt(SIGNATURE_TTL_SECONDS + 60)) return json({ error: "Deadline too far in the future." }, 400);
 
-  const publicClient = createPublicClient({ chain: ENDORSEMENTS_CHAIN, transport: http(RPC) });
-  const contract = { address: ENDORSEMENTS_ADDRESS, abi: endorsementsAbi } as const;
+  const publicClient = createPublicClient({ chain: GASLESS_CHAIN, transport: http(RPC) });
+  const contract = { address: target, abi: endorsementsAbi } as const;
 
   try {
     const [nonce, already, skillCount] = await Promise.all([
@@ -93,7 +98,7 @@ export async function POST(request: NextRequest) {
     // Off-chain check first so invalid signatures never cost the relayer anything.
     const valid = await publicClient.verifyTypedData({
       address: endorser,
-      domain: endorseDomain(ENDORSEMENTS_ADDRESS),
+      domain: endorseDomain(target, GASLESS_CHAIN.id),
       types: endorseTypes,
       primaryType: "Endorse",
       message: { endorser, skillId, nonce, deadline },
@@ -113,7 +118,7 @@ export async function POST(request: NextRequest) {
       functionName: "endorseBySig",
       args: [endorser, skillId, deadline, signature],
     });
-    const wallet = createWalletClient({ account, chain: ENDORSEMENTS_CHAIN, transport: http(RPC) });
+    const wallet = createWalletClient({ account, chain: GASLESS_CHAIN, transport: http(RPC) });
     const hash = await wallet.writeContract(tx);
     return json({ hash });
   } catch {

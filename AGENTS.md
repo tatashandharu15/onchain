@@ -12,7 +12,8 @@ Rules for agents:
 - Contract changes in contracts/ need matching Foundry tests (unit + fuzz, and an invariant when state rules change); regenerate src/lib/guestbookAbi.ts, endorsementsAbi.ts or badgeAbi.ts after ABI changes.
 - Render only https image URLs from indexers (see safeImage in /api/assets); never put indexer strings into HTML or SVG unescaped.
 - Never put private keys in .env or scripts; deploy with `--account` keystores. The one exception is RELAYER_PRIVATE_KEY: a dedicated testnet relayer wallet with a small balance, set only in Vercel env, never committed, and only used by /api/endorse to call endorseBySig.
-- /api/endorse must keep verifying the signature off-chain and simulating before it spends relayer gas.
+- /api/endorse must keep verifying the signature off-chain and simulating before it spends relayer gas, and must stay locked to Base Sepolia (GASLESS_CHAIN); never point the relayer at mainnet.
+- Chain-specific values (contracts chain, explorers) come from src/lib/contracts.ts; do not hard-code a chain or explorer in components.
 - Keep design tokens in src/app/globals.css in sync with the main site repo (tatashandharu15/portofolio).
 
 <!-- BEGIN:nextjs-agent-rules -->

@@ -1,6 +1,6 @@
 import { createPublicClient, http, type Address } from "viem";
 import { arbitrum, base, baseSepolia, bsc, mainnet, polygon } from "viem/chains";
-import { guestbookAbi, GUESTBOOK_ADDRESS } from "./guestbook";
+import { guestbookAbi, GUESTBOOK_ADDRESS, GUESTBOOK_CHAIN } from "./guestbook";
 
 /** Server-side public clients, using the same optional RPC overrides as the browser. */
 const RPC: Record<number, string | undefined> = {
@@ -27,7 +27,7 @@ export function serverClient(chainId: number) {
 export async function siteOwner(): Promise<Address | null> {
   if (!GUESTBOOK_ADDRESS) return null;
   try {
-    return await serverClient(baseSepolia.id).readContract({
+    return await serverClient(GUESTBOOK_CHAIN.id).readContract({
       address: GUESTBOOK_ADDRESS,
       abi: guestbookAbi,
       functionName: "owner",

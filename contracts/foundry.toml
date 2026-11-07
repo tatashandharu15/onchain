@@ -22,6 +22,8 @@ fail_on_revert = false
 
 [rpc_endpoints]
 base_sepolia = "https://sepolia.base.org"
+base = "https://mainnet.base.org"
 
 [etherscan]
 base_sepolia = { key = "${ETHERSCAN_API_KEY}", chain = 84532 }
+base = { key = "${ETHERSCAN_API_KEY}", chain = 8453 }

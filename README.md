@@ -93,6 +93,21 @@ To moderate: `cast send <address> "setHidden(uint256,bool)" <id> true --rpc-url 
 
 If you change the contract ABI, regenerate `src/lib/guestbookAbi.ts` from `contracts/out/Guestbook.sol/Guestbook.json`.
 
+## Base mainnet
+
+The site's contracts can run on Base mainnet while the gas-free endorsement demo stays on Base Sepolia (the relayer is hard-locked to the testnet and never spends real ETH).
+
+1. Fund the deployer with a little ETH on Base (the whole set costs roughly 0.0001 ETH at typical Base gas prices).
+2. Dry run, no ETH spent: `forge script script/DeployAll.s.sol --rpc-url base --account deployer`
+3. Deploy and verify: `forge script script/DeployAll.s.sol --rpc-url base --account deployer --broadcast --verify`
+4. In Vercel set:
+   - `NEXT_PUBLIC_CONTRACTS_CHAIN=base`
+   - `NEXT_PUBLIC_GUESTBOOK_ADDRESS`, `NEXT_PUBLIC_ENDORSEMENTS_ADDRESS`, `NEXT_PUBLIC_BADGE_ADDRESS` to the new mainnet addresses printed by the script
+   - `NEXT_PUBLIC_GASLESS_ENDORSEMENTS_ADDRESS=0x121cB00B3E837057e1EefbD951F166F2Ce576E55` (the existing Base Sepolia Endorsements, served by the relayer)
+5. Redeploy. On mainnet, visitors pay their own (tiny) gas; the Endorsements section offers a "Base Sepolia (gas-free demo)" tab.
+
+To roll back to testnet, remove `NEXT_PUBLIC_CONTRACTS_CHAIN` and restore the Sepolia addresses.
+
 ## Environment variables (all optional)
 
 Public RPCs are used by default. They are rate limited, so for production set private endpoints in Vercel:
@@ -110,7 +125,9 @@ Guestbook:
 
 Endorsements:
 
-- `NEXT_PUBLIC_ENDORSEMENTS_ADDRESS`: deployed Endorsements address on Base Sepolia
+- `NEXT_PUBLIC_CONTRACTS_CHAIN`: `base` for Base mainnet; unset (default) for Base Sepolia. Applies to Guestbook, Endorsements and VisitorBadge.
+- `NEXT_PUBLIC_ENDORSEMENTS_ADDRESS`: deployed Endorsements address on that chain
+- `NEXT_PUBLIC_GASLESS_ENDORSEMENTS_ADDRESS`: only when the chain is `base`; the Base Sepolia Endorsements used by the gas-free demo
 - `RELAYER_PRIVATE_KEY` (server-only): private key of a dedicated Base Sepolia relayer wallet holding a small amount of test ETH. It only ever calls `endorseBySig` on the configured contract. Without it, visitors can still endorse by paying gas themselves.
 
 Token and NFT discovery (server-only):

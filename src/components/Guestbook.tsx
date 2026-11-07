@@ -5,6 +5,7 @@ import { useState } from "react";
 import { BaseError, ContractFunctionRevertedError, UserRejectedRequestError, type Hash } from "viem";
 import { useConfig, useConnection } from "wagmi";
 import { readContract, simulateContract, switchChain, waitForTransactionReceipt, writeContract } from "wagmi/actions";
+import { CONTRACTS_CHAIN_LABEL, IS_MAINNET } from "@/lib/contracts";
 import { shortAddress } from "@/lib/format";
 import { useSession } from "@/lib/useSession";
 import {
@@ -34,7 +35,9 @@ function explain(err: unknown): string {
       if (name === "MessageTooLong") return `Message is ${args[0]} bytes; the limit is ${args[1]}.`;
       if (name === "EmptyMessage") return "Write something first.";
     }
-    if (/insufficient funds/i.test(err.message)) return "You need a little Base Sepolia ETH for gas. Any Base Sepolia faucet gives it for free.";
+    if (/insufficient funds/i.test(err.message)) return IS_MAINNET
+        ? "You need a little ETH on Base for gas (usually well under a cent)."
+        : "You need a little Base Sepolia ETH for gas. Any Base Sepolia faucet gives it for free.";
     return err.shortMessage;
   }
   return "Something went wrong.";
@@ -154,20 +157,20 @@ export function Guestbook() {
 
   const label =
     phase === "switching"
-      ? "Switching to Base Sepolia…"
+      ? `Switching to ${CONTRACTS_CHAIN_LABEL}…`
       : phase === "confirm"
         ? "Confirm in MetaMask…"
         : phase === "pending"
           ? "Writing to chain…"
           : chainId !== GUESTBOOK_CHAIN.id && connected
-            ? "Switch to Base Sepolia & sign"
+            ? `Switch to ${CONTRACTS_CHAIN_LABEL} & sign`
             : "Sign guestbook";
 
   return (
     <section className="gb px" aria-labelledby="gb-title">
       <div className="dash-head">
         <p className="t-mono c-muted" id="gb-title">
-          Guestbook · Base Sepolia
+          Guestbook · {CONTRACTS_CHAIN_LABEL}
         </p>
         {GUESTBOOK_ADDRESS && (
           <a
@@ -185,8 +188,11 @@ export function Guestbook() {
         <div className="gb-intro">
           <p className="t-next">Leave a message on-chain.</p>
           <p className="t-body c-muted">
-            Up to 140 bytes, one message per hour, written by a contract I built and tested with Foundry. It runs on the
-            Base Sepolia testnet, so gas is free test ETH. Messages are public and permanent.
+            Up to 140 bytes, one message per hour, written by a contract I built and tested with Foundry.{" "}
+            {IS_MAINNET
+              ? "It runs on Base mainnet; gas is usually a fraction of a cent."
+              : "It runs on the Base Sepolia testnet, so gas is free test ETH."}{" "}
+            Messages are public and permanent.
           </p>
 
           {!GUESTBOOK_ADDRESS ? (

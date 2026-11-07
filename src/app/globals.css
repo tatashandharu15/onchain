@@ -200,3 +200,4 @@ a { color: inherit; text-decoration: none; }
 .nft-meta { text-transform: none; }
 @media (max-width: 1199.98px) { .nft-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 809.98px) { .nft-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.en-nets { display: flex; gap: 8px; flex-wrap: wrap; }

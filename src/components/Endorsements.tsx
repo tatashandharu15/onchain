@@ -12,47 +12,54 @@ import {
   waitForTransactionReceipt,
   writeContract,
 } from "wagmi/actions";
+import { CONTRACTS_CHAIN, explorerFor } from "@/lib/contracts";
 import {
-  ENDORSEMENTS_ADDRESS,
-  ENDORSEMENTS_CHAIN,
   endorseDomain,
+  endorsementNetworks,
   freshDeadline,
   endorseTypes,
   endorsementsAbi,
   type RelayResponse,
 } from "@/lib/endorsements";
 import { shortAddress } from "@/lib/format";
-import { GUESTBOOK_EXPLORER } from "@/lib/guestbook";
 
 type Busy = { skillId: number; step: string } | null;
 
 function explain(err: unknown) {
   if (err instanceof BaseError) {
     if (err.walk((e) => e instanceof UserRejectedRequestError)) return "Request rejected in your wallet.";
-    if (/insufficient funds/i.test(err.message)) return "You need a little Base Sepolia ETH for gas.";
+    if (/insufficient funds/i.test(err.message)) return "You need a little ETH on this network for gas.";
     return err.shortMessage;
   }
   return err instanceof Error ? err.message : "Something went wrong.";
 }
 
+const NETWORKS = endorsementNetworks();
+const ENDORSEMENTS_DEFAULT_CHAIN = CONTRACTS_CHAIN.id;
+
 export function Endorsements() {
   const config = useConfig();
+  const [netKey, setNetKey] = useState(NETWORKS[0]?.key);
+  const net = NETWORKS.find((n) => n.key === netKey) ?? NETWORKS[0];
+  const ADDRESS = net?.address ?? null;
+  const CHAIN_ID = (net?.chainId ?? ENDORSEMENTS_DEFAULT_CHAIN) as (typeof config.chains)[number]["id"];
+  const EXPLORER = explorerFor(CHAIN_ID);
   const { address, status, chainId } = useConnection();
   const connected = status === "connected" && !!address;
   const [busy, setBusy] = useState<Busy>(null);
   const [notice, setNotice] = useState<{ skillId: number; text: string; hash?: Hash; error?: boolean } | null>(null);
 
   const skills = useQuery({
-    queryKey: ["endorsements", ENDORSEMENTS_ADDRESS, address ?? null],
-    enabled: !!ENDORSEMENTS_ADDRESS,
+    queryKey: ["endorsements", ADDRESS, CHAIN_ID, address ?? null],
+    enabled: !!ADDRESS,
     refetchInterval: 30_000,
     queryFn: async () => {
       const [names, counts, mine] = await readContract(config, {
-        address: ENDORSEMENTS_ADDRESS!,
+        address: ADDRESS!,
         abi: endorsementsAbi,
         functionName: "getSkills",
         args: [address ?? zeroAddress],
-        chainId: ENDORSEMENTS_CHAIN.id,
+        chainId: CHAIN_ID,
       });
       return names.map((name, i) => ({ id: i, name, count: Number(counts[i]), mine: mine[i] }));
     },
@@ -61,48 +68,48 @@ export function Endorsements() {
   const total = skills.data?.reduce((s, k) => s + k.count, 0) ?? 0;
 
   async function ensureChain() {
-    if (chainId !== ENDORSEMENTS_CHAIN.id) {
-      await switchChain(config, { chainId: ENDORSEMENTS_CHAIN.id });
+    if (chainId !== CHAIN_ID) {
+      await switchChain(config, { chainId: CHAIN_ID });
     }
   }
 
   async function directTx(skillId: number, fn: "endorse" | "unendorse") {
     const { request } = await simulateContract(config, {
       account: address!,
-      address: ENDORSEMENTS_ADDRESS!,
+      address: ADDRESS!,
       abi: endorsementsAbi,
       functionName: fn,
       args: [BigInt(skillId)],
-      chainId: ENDORSEMENTS_CHAIN.id,
+      chainId: CHAIN_ID,
     });
     return writeContract(config, request);
   }
 
   async function endorse(skillId: number, payMyself = false) {
-    if (!ENDORSEMENTS_ADDRESS || !address) return;
+    if (!net || !ADDRESS || !address) return;
     setNotice(null);
     try {
-      setBusy({ skillId, step: "Switching to Base Sepolia…" });
+      setBusy({ skillId, step: `Switching to ${net.label}…` });
       await ensureChain();
 
       let hash: Hash;
       let how: string;
-      if (payMyself) {
+      if (payMyself || !net.gasless) {
         setBusy({ skillId, step: "Confirm in MetaMask…" });
         hash = await directTx(skillId, "endorse");
         how = "Endorsed from your wallet.";
       } else {
         const nonce = await readContract(config, {
-          address: ENDORSEMENTS_ADDRESS,
+          address: ADDRESS,
           abi: endorsementsAbi,
           functionName: "nonces",
           args: [address],
-          chainId: ENDORSEMENTS_CHAIN.id,
+          chainId: CHAIN_ID,
         });
         const deadline = freshDeadline();
         setBusy({ skillId, step: "Sign in MetaMask (free)…" });
         const signature = await signTypedData(config, {
-          domain: endorseDomain(ENDORSEMENTS_ADDRESS),
+          domain: endorseDomain(ADDRESS, CHAIN_ID),
           types: endorseTypes,
           primaryType: "Endorse",
           message: { endorser: address, skillId: BigInt(skillId), nonce, deadline },
@@ -124,7 +131,7 @@ export function Endorsements() {
       }
 
       setBusy({ skillId, step: "Writing to chain…" });
-      await waitForTransactionReceipt(config, { hash, chainId: ENDORSEMENTS_CHAIN.id });
+      await waitForTransactionReceipt(config, { hash, chainId: CHAIN_ID });
       setNotice({ skillId, text: how, hash });
       await skills.refetch();
     } catch (err) {
@@ -135,15 +142,15 @@ export function Endorsements() {
   }
 
   async function withdraw(skillId: number) {
-    if (!ENDORSEMENTS_ADDRESS || !address) return;
+    if (!ADDRESS || !address) return;
     setNotice(null);
     try {
-      setBusy({ skillId, step: "Switching to Base Sepolia…" });
+      setBusy({ skillId, step: `Switching to ${net.label}…` });
       await ensureChain();
       setBusy({ skillId, step: "Confirm in MetaMask…" });
       const hash = await directTx(skillId, "unendorse");
       setBusy({ skillId, step: "Writing to chain…" });
-      await waitForTransactionReceipt(config, { hash, chainId: ENDORSEMENTS_CHAIN.id });
+      await waitForTransactionReceipt(config, { hash, chainId: CHAIN_ID });
       setNotice({ skillId, text: "Endorsement withdrawn.", hash });
       await skills.refetch();
     } catch (err) {
@@ -157,30 +164,63 @@ export function Endorsements() {
     <section className="dash px" aria-labelledby="en-title">
       <div className="dash-head">
         <p className="t-mono c-muted" id="en-title">
-          Endorsements · Base Sepolia
+          Endorsements · {net?.label ?? "Base"}
         </p>
-        {ENDORSEMENTS_ADDRESS && (
+        {ADDRESS && (
           <a
             className="t-mono l-muted"
-            href={`${GUESTBOOK_EXPLORER}/address/${ENDORSEMENTS_ADDRESS}`}
+            href={`${EXPLORER}/address/${ADDRESS}`}
             target="_blank"
             rel="noopener noreferrer"
           >
-            Contract {shortAddress(ENDORSEMENTS_ADDRESS)} ↗
+            Contract {shortAddress(ADDRESS)} ↗
           </a>
         )}
       </div>
 
+      {NETWORKS.length > 1 && (
+        <div className="en-nets t-mono" role="tablist" aria-label="Endorsement network">
+          {NETWORKS.map((n) => (
+            <button
+              key={n.key}
+              type="button"
+              role="tab"
+              aria-selected={n.key === net?.key}
+              className={`btn ${n.key === net?.key ? "" : "btn-ghost"} t-mono`}
+              disabled={!!busy}
+              onClick={() => {
+                setNetKey(n.key);
+                setNotice(null);
+              }}
+            >
+              {n.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="ap-intro">
-        <p className="t-next">Vouch for a skill, gas-free.</p>
-        <p className="t-body c-muted">
-          You sign a typed message in MetaMask, which costs nothing. My relayer checks the signature and puts it on-chain,
-          paying the gas. The contract binds each signature to this chain, this contract and a single-use nonce with a 30
-          minute deadline, so it cannot be replayed.
-        </p>
+        {net?.gasless ? (
+          <>
+            <p className="t-next">Vouch for a skill, gas-free.</p>
+            <p className="t-body c-muted">
+              You sign a typed message in MetaMask, which costs nothing. My relayer checks the signature and puts it
+              on-chain, paying the gas. The contract binds each signature to this chain, this contract and a single-use
+              nonce with a 30 minute deadline, so it cannot be replayed.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="t-next">Vouch for a skill on Base mainnet.</p>
+            <p className="t-body c-muted">
+              A real on-chain endorsement from your wallet; gas on Base is usually a fraction of a cent. Want to see the
+              gas-free EIP-712 flow? Switch to the Base Sepolia demo above.
+            </p>
+          </>
+        )}
       </div>
 
-      {!ENDORSEMENTS_ADDRESS ? (
+      {!net || !ADDRESS ? (
         <p className="t-mono notice">Contract deployment in progress. Check back soon.</p>
       ) : skills.isPending ? (
         <p className="t-mono c-muted">Reading skills…</p>
@@ -212,7 +252,7 @@ export function Endorsements() {
                           <button className="btn t-mono" type="button" disabled={!!busy} onClick={() => endorse(s.id)}>
                             {isBusy ? busy.step : "Endorse"}
                           </button>
-                          {!isBusy && (
+                          {!isBusy && net.gasless && (
                             <button className="en-alt t-mono l-muted" type="button" disabled={!!busy} onClick={() => endorse(s.id, true)}>
                               Pay gas myself
                             </button>
@@ -225,7 +265,7 @@ export function Endorsements() {
                     <p className={`t-mono en-note ${notice.error ? "notice" : "c-muted"}`}>
                       {notice.text}{" "}
                       {notice.hash && (
-                        <a className="l-underline" href={`${GUESTBOOK_EXPLORER}/tx/${notice.hash}`} target="_blank" rel="noopener noreferrer">
+                        <a className="l-underline" href={`${EXPLORER}/tx/${notice.hash}`} target="_blank" rel="noopener noreferrer">
                           View transaction ↗
                         </a>
                       )}

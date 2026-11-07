@@ -1,14 +1,43 @@
 import { isAddress, type Address } from "viem";
-import { GUESTBOOK_CHAIN } from "./guestbook";
+import { CONTRACTS_CHAIN, GASLESS_CHAIN, IS_MAINNET } from "./contracts";
 
 export { endorsementsAbi } from "./endorsementsAbi";
 
-/** Same testnet as the guestbook. */
-export const ENDORSEMENTS_CHAIN = GUESTBOOK_CHAIN;
+const addr = (v: string | undefined): Address | null => (v && isAddress(v) ? v : null);
 
-const raw = process.env.NEXT_PUBLIC_ENDORSEMENTS_ADDRESS;
+/** Main deployment, on the same chain as the guestbook (mainnet or testnet). */
+export const ENDORSEMENTS_CHAIN = CONTRACTS_CHAIN;
 /** Null until the contract is deployed and NEXT_PUBLIC_ENDORSEMENTS_ADDRESS is set. */
-export const ENDORSEMENTS_ADDRESS: Address | null = raw && isAddress(raw) ? raw : null;
+export const ENDORSEMENTS_ADDRESS = addr(process.env.NEXT_PUBLIC_ENDORSEMENTS_ADDRESS);
+
+/**
+ * The deployment the gas-free relayer serves. Always on Base Sepolia: on a testnet site it is the main
+ * deployment; on a mainnet site it is a separate testnet contract set in NEXT_PUBLIC_GASLESS_ENDORSEMENTS_ADDRESS.
+ */
+export const GASLESS_ENDORSEMENTS_ADDRESS = IS_MAINNET
+  ? addr(process.env.NEXT_PUBLIC_GASLESS_ENDORSEMENTS_ADDRESS)
+  : ENDORSEMENTS_ADDRESS;
+export { GASLESS_CHAIN };
+
+export type EndorsementNetwork = { key: "main" | "gasless"; label: string; address: Address; chainId: number; gasless: boolean };
+
+/** Networks the endorsement section can switch between. */
+export function endorsementNetworks(): EndorsementNetwork[] {
+  const out: EndorsementNetwork[] = [];
+  if (ENDORSEMENTS_ADDRESS) {
+    out.push({
+      key: "main",
+      label: IS_MAINNET ? "Base" : "Base Sepolia",
+      address: ENDORSEMENTS_ADDRESS,
+      chainId: CONTRACTS_CHAIN.id,
+      gasless: !IS_MAINNET,
+    });
+  }
+  if (IS_MAINNET && GASLESS_ENDORSEMENTS_ADDRESS) {
+    out.push({ key: "gasless", label: "Base Sepolia (gas-free demo)", address: GASLESS_ENDORSEMENTS_ADDRESS, chainId: GASLESS_CHAIN.id, gasless: true });
+  }
+  return out;
+}
 
 /** How long a signed endorsement stays valid. The relayer refuses anything further out. */
 export const SIGNATURE_TTL_SECONDS = 30 * 60;
@@ -26,11 +55,11 @@ export const endorseTypes = {
   ],
 } as const;
 
-export function endorseDomain(verifyingContract: Address) {
+export function endorseDomain(verifyingContract: Address, chainId: number) {
   return {
     name: "Tatas Onchain Endorsements",
     version: "1",
-    chainId: ENDORSEMENTS_CHAIN.id,
+    chainId,
     verifyingContract,
   } as const;
 }
