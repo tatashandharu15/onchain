@@ -81,6 +81,7 @@ a { color: inherit; text-decoration: none; }
 .wallet { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
 .wallet-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
 .wallet-id { display: flex; flex-direction: column; gap: 2px; }
+.wallet-signed { color: var(--accent); }
 .wallet-err { color: var(--warn); max-width: 320px; text-transform: none; }
 
 /* Hero */
@@ -145,6 +146,8 @@ a { color: inherit; text-decoration: none; }
 .gb-tx { text-transform: none; }
 .gb-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--grid); }
 .gb-item { padding: 16px 0; border-bottom: 1px solid var(--grid); display: flex; flex-direction: column; gap: 6px; }
+.gb-hidden { opacity: 0.5; }
+.gb-mod { align-self: flex-start; }
 .gb-msg { overflow-wrap: anywhere; white-space: pre-wrap; }
 @media (max-width: 809.98px) { .gb-grid { grid-template-columns: 1fr; gap: 32px; } }
 
@@ -173,3 +176,11 @@ a { color: inherit; text-decoration: none; }
   .en-row { grid-template-columns: 1fr auto; }
   .en-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }
+
+/* Owner panel */
+.op-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.op-card { border: 1px solid var(--grid); padding: 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.op-card .t-next { font-size: 28px; overflow-wrap: anywhere; }
+.op-config { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; text-transform: none; }
+@media (max-width: 1199.98px) { .op-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 809.98px) { .op-grid { grid-template-columns: 1fr; } }

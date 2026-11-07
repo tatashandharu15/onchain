@@ -1,11 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { BaseError, ContractFunctionRevertedError, UserRejectedRequestError, type Hash } from "viem";
 import { useConfig, useConnection } from "wagmi";
 import { readContract, simulateContract, switchChain, waitForTransactionReceipt, writeContract } from "wagmi/actions";
 import { shortAddress } from "@/lib/format";
+import { useSession } from "@/lib/useSession";
 import {
   GUESTBOOK_ADDRESS,
   GUESTBOOK_CHAIN,
@@ -47,6 +48,12 @@ export function Guestbook() {
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<Hash | null>(null);
 
+  const session = useSession();
+  const queryClient = useQueryClient();
+  const ownerMode = session.isOwner;
+  const [modBusy, setModBusy] = useState<bigint | null>(null);
+  const [modError, setModError] = useState<string | null>(null);
+
   const entries = useQuery({
     queryKey: ["guestbook", GUESTBOOK_ADDRESS],
     enabled: !!GUESTBOOK_ADDRESS,
@@ -60,7 +67,6 @@ export function Guestbook() {
         total,
         items: page
           .map((e, i) => ({ ...e, id: start + BigInt(i) }))
-          .filter((e) => !e.hidden)
           .reverse(),
       };
     },
@@ -70,6 +76,32 @@ export function Guestbook() {
   const tooLong = bytes > MAX_MESSAGE_BYTES;
   const busy = phase === "switching" || phase === "confirm" || phase === "pending";
   const connected = status === "connected" && !!address;
+  const visibleItems = (entries.data?.items ?? []).filter((e) => ownerMode || !e.hidden);
+
+  async function setHidden(id: bigint, hidden: boolean) {
+    if (!GUESTBOOK_ADDRESS || !address) return;
+    setModBusy(id);
+    setModError(null);
+    try {
+      if (chainId !== GUESTBOOK_CHAIN.id) await switchChain(config, { chainId: GUESTBOOK_CHAIN.id });
+      const { request } = await simulateContract(config, {
+        account: address,
+        address: GUESTBOOK_ADDRESS,
+        abi: guestbookAbi,
+        functionName: "setHidden",
+        args: [id, hidden],
+        chainId: GUESTBOOK_CHAIN.id,
+      });
+      const hash = await writeContract(config, request);
+      await waitForTransactionReceipt(config, { hash, chainId: GUESTBOOK_CHAIN.id });
+      await entries.refetch();
+      void queryClient.invalidateQueries({ queryKey: ["admin-status"] });
+    } catch (err) {
+      setModError(explain(err));
+    } finally {
+      setModBusy(null);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -197,9 +229,10 @@ export function Guestbook() {
         <ol className="gb-list" aria-label="Latest messages">
           {entries.isPending && GUESTBOOK_ADDRESS && <li className="t-mono c-muted">Reading entries…</li>}
           {entries.isError && <li className="t-mono notice">Could not read the guestbook right now.</li>}
-          {entries.data?.items.length === 0 && <li className="t-body c-muted">No messages yet. Be the first.</li>}
-          {entries.data?.items.map((e) => (
-            <li key={e.id.toString()} className="gb-item">
+          {entries.data && visibleItems.length === 0 && <li className="t-body c-muted">No messages yet. Be the first.</li>}
+          {modError && <li className="t-mono notice">{modError}</li>}
+          {visibleItems.map((e) => (
+            <li key={e.id.toString()} className={`gb-item ${e.hidden ? "gb-hidden" : ""}`}>
               <p className="t-body gb-msg">{e.message}</p>
               <p className="t-mono c-muted">
                 <a
@@ -212,7 +245,18 @@ export function Guestbook() {
                 </a>
                 {" · "}
                 {timeFmt.format(new Date(Number(e.timestamp) * 1000))}
+                {e.hidden && <span className="ap-tag t-mono">Hidden</span>}
               </p>
+              {ownerMode && (
+                <button
+                  type="button"
+                  className="en-alt t-mono l-muted gb-mod"
+                  disabled={modBusy !== null}
+                  onClick={() => setHidden(e.id, !e.hidden)}
+                >
+                  {modBusy === e.id ? "Confirm in MetaMask…" : e.hidden ? "Unhide" : "Hide"}
+                </button>
+              )}
             </li>
           ))}
           {entries.data && entries.data.total > PAGE_SIZE && (

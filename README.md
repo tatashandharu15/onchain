@@ -10,6 +10,8 @@ Phase 2b: token approval scanner. `/api/approvals` finds Approval / ApprovalForA
 
 Phase 3a: gasless skill endorsements. `contracts/src/Endorsements.sol` accepts endorsements directly or as EIP-712 signatures submitted by anyone (`endorseBySig`). Replay protection: domain separator (chain + contract), per-endorser nonce, deadline, one endorsement per (address, skill); EOA and ERC-1271 smart-account signatures. `/api/endorse` is a relayer: it validates the request, verifies the signature off-chain against the current nonce, simulates, then submits with a testnet relayer wallet that pays the gas. Visitors can also choose "Pay gas myself".
 
+Phase 3b: Sign-In with Ethereum (EIP-4361). `/api/auth/nonce` issues a single-use nonce in a signed httpOnly cookie; `/api/auth/verify` checks domain, nonce, freshness, chain and the signature (EOA or smart account via ERC-1271/6492, viem `verifySiweMessage`) and sets an HMAC-signed session cookie (8 h, SameSite=Strict). No database. The site owner is whoever owns the Guestbook contract on-chain; a signed-in owner gets an owner panel (relayer balance, server config, counts, served only by the owner-gated `/api/admin/status`) and Hide/Unhide on guestbook entries.
+
 Stack: Next.js 16 App Router, wagmi 3 + viem 2, TanStack Query. Prices from DefiLlama, USD/IDR from Frankfurter (ECB), both cached for 60 s in `/api/prices`.
 
 ## Develop
@@ -31,6 +33,7 @@ Open http://localhost:3000 in a browser with MetaMask installed.
 - `src/lib/guestbook.ts`, `src/lib/guestbookAbi.ts`: guestbook address, chain and ABI
 - `src/components/WalletBar.tsx`, `src/components/Dashboard.tsx`, `src/components/Guestbook.tsx`: UI
 - `src/lib/endorsements.ts`, `src/lib/endorsementsAbi.ts`, `src/components/Endorsements.tsx`, `src/app/api/endorse/route.ts`: endorsements and relayer
+- `src/lib/session.ts`, `src/lib/useSession.ts`, `src/app/api/auth/*`, `src/app/api/admin/status/route.ts`, `src/components/OwnerPanel.tsx`: Sign-In with Ethereum and owner panel
 - `contracts/`: Foundry project
 - `next.config.ts`: security headers (CSP, frame-ancestors none, HSTS)
 
@@ -94,6 +97,10 @@ Endorsements:
 - `NEXT_PUBLIC_ENDORSEMENTS_ADDRESS`: deployed Endorsements address on Base Sepolia
 - `RELAYER_PRIVATE_KEY` (server-only): private key of a dedicated Base Sepolia relayer wallet holding a small amount of test ETH. It only ever calls `endorseBySig` on the configured contract. Without it, visitors can still endorse by paying gas themselves.
 
+Sign-In with Ethereum (server-only):
+
+- `SESSION_SECRET`: random string of at least 32 characters used to sign session and nonce cookies, e.g. `openssl rand -base64 48`. Without it the Sign in button is hidden. Changing it signs everyone out.
+
 Approval scanner (server-only, never prefix with NEXT_PUBLIC):
 
 - `ETHERSCAN_API_KEY`: Etherscan API V2 key. Without it the approvals section says the scanner is not configured.
@@ -114,6 +121,6 @@ Phase 2 (done): Guestbook.sol on Base Sepolia.
 Phase 2b (done): token approvals with revoke.
 Next: full token and NFT discovery for the dashboard.
 Phase 3a (done): EIP-712 endorsements with relayer.
-Phase 3b: Sign-In with Ethereum.
+Phase 3b (done): Sign-In with Ethereum and owner panel.
 Later: NFTs, visitor badge, Ponder indexing, Base mainnet.
 PRD: `Web3 & Blockchain/03-projects/web3-portfolio/PRD.md`.

@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import { useConnect, useConnection, useConnectors, useDisconnect, useEnsName } from "wagmi";
+import { useChains, useConnect, useConnection, useConnectors, useDisconnect, useEnsName } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import { chainMeta } from "@/lib/tokens";
 import { shortAddress } from "@/lib/format";
+import { useSession } from "@/lib/useSession";
 
 const noop = () => () => {};
 
@@ -13,6 +14,8 @@ export function WalletBar() {
   const connectors = useConnectors();
   const connect = useConnect();
   const disconnect = useDisconnect();
+  const session = useSession();
+  const chains = useChains();
   const { data: ens } = useEnsName({ address, chainId: mainnet.id, query: { enabled: !!address } });
 
   // Prefer MetaMask announced via EIP-6963; fall back to any injected wallet.
@@ -45,11 +48,29 @@ export function WalletBar() {
         <span className="wallet-dot" aria-hidden />
         <div className="wallet-id">
           <span className="t-body">{ens ?? shortAddress(address)}</span>
-          <span className="t-mono c-muted">{chainMeta(chainId ?? 0)?.name ?? `Chain ${chainId}`}</span>
+          <span className="t-mono c-muted">{chainMeta(chainId ?? 0)?.name ?? chains.find((c) => c.id === chainId)?.name ?? `Chain ${chainId}`}</span>
         </div>
-        <button type="button" className="btn btn-ghost t-mono" onClick={() => disconnect.mutate()}>
-          Disconnect
+        {session.configured &&
+          (session.signedIn ? (
+            <span className="t-mono wallet-signed" title="Signed in with Ethereum">
+              {session.isOwner ? "Owner" : "Signed in"}
+            </span>
+          ) : (
+            <button type="button" className="btn btn-ghost t-mono" disabled={session.pending} onClick={() => session.signIn()}>
+              {session.pending ? "Sign in MetaMask…" : "Sign in"}
+            </button>
+          ))}
+        <button
+          type="button"
+          className="btn btn-ghost t-mono"
+          onClick={() => {
+            if (session.signedIn) void session.signOut();
+            disconnect.mutate();
+          }}
+        >
+          {session.signedIn ? "Sign out" : "Disconnect"}
         </button>
+        {session.error && <span className="t-mono wallet-err">{session.error}</span>}
       </div>
     );
   }

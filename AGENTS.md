@@ -7,6 +7,7 @@ Rules for agents:
 - Do not add third-party scripts; keep the CSP in next.config.ts intact.
 - Visitor addresses and balances must not be stored, logged or cached on the server. The only route that receives an address is /api/approvals, which forwards it to Etherscan or Blockscout and returns; keep it that way.
 - ETHERSCAN_API_KEY and BLOCKSCOUT_API_KEY are server-only; never expose them with a NEXT_PUBLIC_ prefix.
+- SIWE: keep the domain, nonce, freshness and signature checks in /api/auth/verify; owner-only data must be gated server-side by readSession() plus an on-chain owner check, never only in the UI. SESSION_SECRET is server-only.
 - New tokens go in src/lib/tokens.ts; verify the address on the chain explorer.
 - Contract changes in contracts/ need matching Foundry tests (unit + fuzz, and an invariant when state rules change); regenerate src/lib/guestbookAbi.ts after ABI changes.
 - Never put private keys in .env or scripts; deploy with `--account` keystores. The one exception is RELAYER_PRIVATE_KEY: a dedicated testnet relayer wallet with a small balance, set only in Vercel env, never committed, and only used by /api/endorse to call endorseBySig.

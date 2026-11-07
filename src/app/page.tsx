@@ -1,6 +1,7 @@
 import { Dashboard } from "@/components/Dashboard";
 import { Endorsements } from "@/components/Endorsements";
 import { Guestbook } from "@/components/Guestbook";
+import { OwnerPanel } from "@/components/OwnerPanel";
 import { WalletBar } from "@/components/WalletBar";
 
 const MAIN_SITE = "https://tatas.anxentlab.my.id";
@@ -28,6 +29,7 @@ export default function Home() {
         <Dashboard />
         <Guestbook />
         <Endorsements />
+        <OwnerPanel />
       </main>
 
       <footer className="foot px t-mono c-muted">
