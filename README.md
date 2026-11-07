@@ -6,7 +6,7 @@ Phase 1: connect MetaMask and read balances (native coin + major tokens) across 
 
 Phase 2: an on-chain guestbook on Base Sepolia. `contracts/` holds the Foundry project (Guestbook.sol, unit/fuzz/invariant tests, deploy script); the dApp reads the latest entries and lets a connected wallet sign (switching to Base Sepolia if needed).
 
-Phase 2b: token approval scanner. `/api/approvals` finds Approval / ApprovalForAll events for an owner through Etherscan API V2 (server-side key), the browser re-checks every candidate's current allowance on-chain, flags unlimited approvals and spenders that are not contracts, and lets the connected owner revoke (approve 0 / setApprovalForAll false). The address passes through the route without being logged or stored.
+Phase 2b: token approval scanner. `/api/approvals` finds Approval / ApprovalForAll events for an owner through Etherscan API V2, with Blockscout as fallback (server-side keys), the browser re-checks every candidate's current allowance on-chain, flags unlimited approvals and spenders that are not contracts, and lets the connected owner revoke (approve 0 / setApprovalForAll false). The address passes through the route without being logged or stored.
 
 Stack: Next.js 16 App Router, wagmi 3 + viem 2, TanStack Query. Prices from DefiLlama, USD/IDR from Frankfurter (ECB), both cached for 60 s in `/api/prices`.
 
@@ -78,7 +78,8 @@ Guestbook:
 
 Approval scanner (server-only, never prefix with NEXT_PUBLIC):
 
-- `ETHERSCAN_API_KEY`: Etherscan API V2 key. Without it the approvals section says the scanner is not configured. Chains not covered by your Etherscan plan are listed as "not scanned".
+- `ETHERSCAN_API_KEY`: Etherscan API V2 key. Without it the approvals section says the scanner is not configured.
+- `BLOCKSCOUT_API_KEY` (optional): Blockscout API key, used as fallback for chains your Etherscan plan does not cover. On free plans neither Etherscan nor Blockscout covers Base or BNB Chain (Blockscout: "Featured chain 8453 requires one of the following plans: Builder, Business, Pro"), so those chains are shown as "not covered yet".
 
 These are exposed to the browser, so use keys restricted to the onchain domain in the provider dashboard.
 
