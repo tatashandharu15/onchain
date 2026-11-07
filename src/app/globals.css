@@ -158,3 +158,18 @@ a { color: inherit; text-decoration: none; }
 .ap-table .btn { padding: 6px 10px; }
 .ap-err { text-align: right; text-transform: none; margin-top: 6px; }
 .ap-foot { text-transform: none; }
+
+/* Endorsements */
+.en-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--grid); }
+.en-item { padding: 16px 0; border-bottom: 1px solid var(--grid); }
+.en-row { display: grid; grid-template-columns: 1fr 64px auto; gap: 16px; align-items: center; }
+.en-count { text-align: right; font-variant-numeric: tabular-nums; }
+.en-actions { display: flex; gap: 12px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+.en-mine { color: var(--accent); }
+.en-alt { background: none; border: 0; padding: 0; cursor: pointer; text-transform: none; text-decoration: underline; text-underline-offset: 0.25em; }
+.en-alt:disabled { opacity: 0.4; cursor: not-allowed; }
+.en-note { margin-top: 8px; text-transform: none; }
+@media (max-width: 809.98px) {
+  .en-row { grid-template-columns: 1fr auto; }
+  .en-actions { grid-column: 1 / -1; justify-content: flex-start; }
+}

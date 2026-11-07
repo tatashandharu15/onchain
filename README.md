@@ -8,6 +8,8 @@ Phase 2: an on-chain guestbook on Base Sepolia. `contracts/` holds the Foundry p
 
 Phase 2b: token approval scanner. `/api/approvals` finds Approval / ApprovalForAll events for an owner through Etherscan API V2, with Blockscout as fallback (server-side keys), the browser re-checks every candidate's current allowance on-chain, flags unlimited approvals and spenders that are not contracts, and lets the connected owner revoke (approve 0 / setApprovalForAll false). The address passes through the route without being logged or stored.
 
+Phase 3a: gasless skill endorsements. `contracts/src/Endorsements.sol` accepts endorsements directly or as EIP-712 signatures submitted by anyone (`endorseBySig`). Replay protection: domain separator (chain + contract), per-endorser nonce, deadline, one endorsement per (address, skill); EOA and ERC-1271 smart-account signatures. `/api/endorse` is a relayer: it validates the request, verifies the signature off-chain against the current nonce, simulates, then submits with a testnet relayer wallet that pays the gas. Visitors can also choose "Pay gas myself".
+
 Stack: Next.js 16 App Router, wagmi 3 + viem 2, TanStack Query. Prices from DefiLlama, USD/IDR from Frankfurter (ECB), both cached for 60 s in `/api/prices`.
 
 ## Develop
@@ -28,6 +30,7 @@ Open http://localhost:3000 in a browser with MetaMask installed.
 - `src/app/api/approvals/route.ts`, `src/lib/approvals.ts`, `src/components/Approvals.tsx`: approval scanner and revoke
 - `src/lib/guestbook.ts`, `src/lib/guestbookAbi.ts`: guestbook address, chain and ABI
 - `src/components/WalletBar.tsx`, `src/components/Dashboard.tsx`, `src/components/Guestbook.tsx`: UI
+- `src/lib/endorsements.ts`, `src/lib/endorsementsAbi.ts`, `src/components/Endorsements.tsx`, `src/app/api/endorse/route.ts`: endorsements and relayer
 - `contracts/`: Foundry project
 - `next.config.ts`: security headers (CSP, frame-ancestors none, HSTS)
 
@@ -44,6 +47,16 @@ forge coverage
 ```
 
 `Guestbook.sol`: 140-byte messages, one per address per hour, entries stored for paging, owner can hide entries in the UI (`Ownable2Step`). Tests cover every revert path, the cooldown boundary, pagination edges, fuzzed lengths/waits/ranges, and four invariants driven by a handler.
+
+### Deploy Endorsements
+
+```bash
+forge script script/DeployEndorsements.s.sol --rpc-url base_sepolia --account deployer --broadcast --verify
+```
+
+Seeds five skills. Put the address in Vercel as `NEXT_PUBLIC_ENDORSEMENTS_ADDRESS`.
+
+Deployed: Endorsements on Base Sepolia at `0x121cB00B3E837057e1EefbD951F166F2Ce576E55` (owner `0x1450329C78487f0A28c47a819e77D4De575370f7`, block 55749740, verified on Basescan and Sourcify). Test suite at deploy: 47 passed (incl. 24 Endorsements unit/fuzz and 2 replay-hunting invariants).
 
 ### Deploy to Base Sepolia
 
@@ -76,6 +89,11 @@ Guestbook:
 
 - `NEXT_PUBLIC_GUESTBOOK_ADDRESS`: deployed Guestbook address on Base Sepolia
 
+Endorsements:
+
+- `NEXT_PUBLIC_ENDORSEMENTS_ADDRESS`: deployed Endorsements address on Base Sepolia
+- `RELAYER_PRIVATE_KEY` (server-only): private key of a dedicated Base Sepolia relayer wallet holding a small amount of test ETH. It only ever calls `endorseBySig` on the configured contract. Without it, visitors can still endorse by paying gas themselves.
+
 Approval scanner (server-only, never prefix with NEXT_PUBLIC):
 
 - `ETHERSCAN_API_KEY`: Etherscan API V2 key. Without it the approvals section says the scanner is not configured.
@@ -95,5 +113,7 @@ These are exposed to the browser, so use keys restricted to the onchain domain i
 Phase 2 (done): Guestbook.sol on Base Sepolia.
 Phase 2b (done): token approvals with revoke.
 Next: full token and NFT discovery for the dashboard.
-Phase 3: Sign-In with Ethereum, EIP-712 endorsements, NFTs, visitor badge, Ponder indexing, Base mainnet.
+Phase 3a (done): EIP-712 endorsements with relayer.
+Phase 3b: Sign-In with Ethereum.
+Later: NFTs, visitor badge, Ponder indexing, Base mainnet.
 PRD: `Web3 & Blockchain/03-projects/web3-portfolio/PRD.md`.
