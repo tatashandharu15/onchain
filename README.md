@@ -4,7 +4,7 @@ The Web3 side of Tatas Handharu's portfolio, served at onchain.tatas.anxentlab.m
 
 Phase 1: connect MetaMask and read balances (native coin + major tokens) across Ethereum, Base, Arbitrum, Polygon and BNB Chain, valued in USD and IDR. Read only: no signature, no transaction, nothing stored server-side.
 
-Phase 2: an on-chain guestbook on Base Sepolia. `contracts/` holds the Foundry project (Guestbook.sol, unit/fuzz/invariant tests, deploy script); the dApp reads the latest entries and lets a connected wallet sign (switching to Base Sepolia if needed).
+Phase 2: an on-chain guestbook (live on Base mainnet; originally deployed on Base Sepolia). `contracts/` holds the Foundry project (Guestbook.sol, unit/fuzz/invariant tests, deploy script); the dApp reads the latest entries and lets a connected wallet sign (switching to Base Sepolia if needed).
 
 Phase 2b: token approval scanner. `/api/approvals` finds Approval / ApprovalForAll events for an owner through Etherscan API V2, with Blockscout as fallback (server-side keys), the browser re-checks every candidate's current allowance on-chain, flags unlimited approvals and spenders that are not contracts, and lets the connected owner revoke (approve 0 / setApprovalForAll false). The address passes through the route without being logged or stored.
 
@@ -108,6 +108,13 @@ The site's contracts can run on Base mainnet while the gas-free endorsement demo
 
 To roll back to testnet, remove `NEXT_PUBLIC_CONTRACTS_CHAIN` and restore the Sepolia addresses.
 
+Deployed 2026-11-12 on Base mainnet (owner `0x1450329C78487f0A28c47a819e77D4De575370f7`, block 56364360, 8 transactions, 0.000022 ETH gas, verified Exact Match on Basescan and Sourcify). The addresses match Base Sepolia because the same deployer ran the same nonce sequence, so step 4 only needed `NEXT_PUBLIC_CONTRACTS_CHAIN` and `NEXT_PUBLIC_GASLESS_ENDORSEMENTS_ADDRESS`:
+- Guestbook `0x930b86E72b6F2c64fdc0263cf4f0126888b5Cec7`
+- Endorsements `0x121cB00B3E837057e1EefbD951F166F2Ce576E55`
+- VisitorBadge `0x611D092f2a2A574E88321e9ffF493630b1F6ba37`
+
+If `--verify` stays "Pending in queue" on a free Etherscan key, wait and check with `forge verify-check <GUID> --chain 8453`; do not resubmit.
+
 ## Environment variables (all optional)
 
 Public RPCs are used by default. They are rate limited, so for production set private endpoints in Vercel:
@@ -163,5 +170,6 @@ Phase 2b (done): token approvals with revoke.
 Phase 2c (done): full token and NFT discovery.
 Phase 3a (done): EIP-712 endorsements with relayer.
 Phase 3b (done): Sign-In with Ethereum and owner panel.
-Later: NFTs, visitor badge, Ponder indexing, Base mainnet.
+Visitor badge (done) and Base mainnet (done, 2026-11-12).
+Later: Ponder indexing, approval coverage for Base and BNB Chain.
 PRD: `Web3 & Blockchain/03-projects/web3-portfolio/PRD.md`.
